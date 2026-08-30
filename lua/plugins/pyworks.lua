@@ -6,7 +6,7 @@ return {
         "GCBallesteros/jupytext.nvim",
         config = false, -- Let pyworks handle jupytext configuration
       },
-      "benlubas/molten-nvim",
+      "jeryldev/molten-nvim",
       "3rd/image.nvim",
     },
     config = function()
@@ -15,6 +15,7 @@ return {
           use_uv = true, -- Use uv for faster package installation
         },
         image_backend = "kitty", -- or "ueberzug" for other terminals
+        skip_jupytext = true, -- suppress false conflict warning; pyworks handles jupytext via CLI
       })
     end,
     lazy = false,
