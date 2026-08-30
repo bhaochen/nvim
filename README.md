@@ -11,4 +11,4 @@ rm -r ~/.local/share/nvim
 mv ~/.config/nvim ~/.config/nvim.bak
 mv ~/.local/share/nvim ~/.local/share/nvim.bak
 
-git clone https://github.com/TorrentBrave/nvim.git ~/.config/
+git clone https://github.com/bhaochen/nvim.git ~/.config/nvim
