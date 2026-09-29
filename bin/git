@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+#
+# git shim for Neovim: proxy + retry for plugin installs.
+#
+# Why this exists: cloning a plugin straight from github.com over a direct
+# connection fails intermittently with
+#
+#     fatal: unable to access 'https://github.com/.../x.git/':
+#     TLS connect error: error:0A000126:SSL routines::unexpected eof while reading
+#
+# The TLS handshake gets cut mid-flight, so the clone dies even though the very
+# next attempt would have worked. Two mitigations, both applied here:
+#
+#   1. send github.com through the local mixed proxy (SOCKS5+HTTP on 10808)
+#   2. retry the operation, because a retry almost always succeeds
+#
+# This shim is only on PATH inside Neovim (see init.lua), so git in your shell
+# is completely unaffected.
+#
+# To point at a different proxy, export NVIM_GIT_PROXY=host:port before
+# starting nvim, e.g. NVIM_GIT_PROXY=127.0.0.1:7890 nvim
+#
+# If the proxy is not listening, this degrades to a plain direct connection.
+
+set -uo pipefail
+
+REAL_GIT=${NVIM_REAL_GIT:-/usr/bin/git}
+[ -x "$REAL_GIT" ] || REAL_GIT=$(command -v -- git)
+PROXY=${NVIM_GIT_PROXY:-127.0.0.1:10808}
+ATTEMPTS=3
+BACKOFF=1
+
+# Only operations that touch the network are worth wrapping. Anything else
+# (diff, commit, add, ...) exits immediately, so this shim is invisible to it.
+case "${1-}" in
+clone | fetch | pull | ls-remote | submodule | archive) ;;
+*) exec "$REAL_GIT" "$@" ;;
+esac
+
+proxy_is_up() {
+  (exec 3<>"/dev/tcp/${PROXY%:*}/${PROXY##*:}") 2>/dev/null
+}
+
+# `-c` scopes the proxy to github.com: other hosts stay direct, and a stopped
+# proxy turns into a direct connection instead of breaking git outright.
+cmd=("$REAL_GIT")
+if proxy_is_up; then
+  cmd+=(-c "http.https://github.com.proxy=http://${PROXY}")
+fi
+cmd+=("$@")
+
+# Only transport-level errors are retried. A real failure (bad merge, missing
+# ref) would just fail again three more times for nothing.
+is_transient() {
+  case $1 in
+  *"TLS connect error"* | *"SSL routines"* | *"Connection reset by peer"* | \
+    *"early EOF"* | *"Recv failure"* | *"Connection timed out"* | \
+    *"Connection refused"* | *"remote end hung up"* | \
+    *"The remote end closed the connection"* | *"RPC failed"* | \
+    *"Could not resolve host"*)
+    return 0
+    ;;
+  esac
+  return 1
+}
+
+attempt=1
+while :; do
+  output=$("${cmd[@]}" 2>&1)
+  status=$?
+  [ "$status" -eq 0 ] && exit 0
+
+  if [ "$attempt" -ge "$ATTEMPTS" ] || ! is_transient "$output"; then
+    printf '%s\n' "$output" >&2
+    exit "$status"
+  fi
+
+  printf 'git %s: transient network failure, retrying (%d/%d)...\n' \
+    "${1-}" "$attempt" "$ATTEMPTS" >&2
+  sleep "$BACKOFF"
+  attempt=$((attempt + 1))
+done

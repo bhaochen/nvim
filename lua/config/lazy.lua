@@ -31,6 +31,11 @@ require("lazy").setup({
     -- version = "*", -- try installing the latest stable version for plugins that support semver
   },
   install = { colorscheme = { "tokyonight", "habamax" } },
+  -- GitHub is reached through the local proxy, with retries, via the `git`
+  -- shim in bin/ (wired up in init.lua). If you ever need to install while
+  -- the proxy is down, uncomment the line below to pull through a mirror
+  -- instead, and comment it back out once the proxy is up again.
+  -- git = { url_format = "https://ghfast.top/https://github.com/%s.git" },
   checker = {
     enabled = true, -- check for plugin updates periodically
     notify = false, -- notify on update
