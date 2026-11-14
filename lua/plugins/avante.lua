@@ -16,6 +16,10 @@ return {
     opts = {
       provider = "groq",
 
+      behaviour = {
+        auto_add_current_file = false,
+      },
+
       providers = {
         groq = {
           __inherited_from = "openai",
@@ -26,7 +30,7 @@ return {
 
           extra_request_body = {
             temperature = 0.6,
-            max_completion_tokens = 8192,
+            max_completion_tokens = 16384,
           },
         },
       },
