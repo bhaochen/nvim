@@ -18,6 +18,15 @@ set -Ux GROQ_API_KEY ""
 echo $GROQ_API_KEY
 ```
 
+```bash
+# 使用 ai.avnate.nvim 要编译好
+cd ~/.local/share/nvim/lazy/avante.nvim
+# 运行 Avante 官方构建命令
+make
+# 检查构建产物
+ls -lh build/
+```
+
 或者备份，但是如果 同步nvim配置后一直崩溃的时候需要把这些全删最好
 
 mv ~/.config/nvim ~/.config/nvim.bak
